@@ -12,9 +12,6 @@ trap "CleanUp" 0 1 2 3 13 15 # EXIT HUP INT QUIT PIPE TERM
 
 readonly SCRIPT_NAME=$(basename $0)
 
-# redirect script output to system logger with file basename
-#exec 1> >(logger -s -t $(basename $0)) 2>&1
-
 log()
 {
    echo "$@"
@@ -31,11 +28,9 @@ Help()
 {
     echo ""
     echo "Example Usage: $0 -c clusterName -g groupId -b bootstrapServers -z zkHosts"
-    echo -e "\t-h  Prints usage note"
-    echo -e "\t-c  Kafka cluster in which connect cluster details will be stored"
+    echo -e "\t-h  Prints usage note"    
     echo -e "\t-g  Group ID to identify Connect cluster workers"
     echo -e "\t-b  Broker details to establish a connection from connect cluster"
-    echo -e "\t-z  Zookeeper hosts of Kafka cluster" 
     exit 0 # Exit script after printing help
 }
 
@@ -48,20 +43,12 @@ CleanUp()
 
 ValidateParameters()
 {
-        if [[ -z "${CLUSTER_NAME}" ]]; then
-            err "Cluster Name is required" && exit 1;
-        fi
-
         if [[ -z "${GROUP_ID}" ]]; then
             err "Group ID is required" && exit 1;
         fi
 
         if [[ -z "${BOOTSTRAP_SERVERS}" ]]; then
             err "Bootstrap servers parameter is required" && exit 1;
-        fi
-
-        if [[ -z "${ZK_HOSTS}" ]]; then
-            err "zkHosts is required" && exit 1;
         fi
 }
 
@@ -102,8 +89,6 @@ UpdateConnectDistributedProperties()
     #Set plugin path
     sudo sed -i "/^plugin.path=.*/d" /usr/hdp/current/kafka-broker/conf/connect-distributed.properties
     sudo sed -i "$ a plugin.path=/usr/hdp/current/kafka-broker/plugins/" /usr/hdp/current/kafka-broker/conf/connect-distributed.properties
-    #sudo sed -i "s/\(plugin.path=\).*/\1/usr/hdp/current/kafka-broker/plugins/" /usr/hdp/current/kafka-broker/conf/connect-distributed.properties
-    #sudo sed -i "s/^#\(plugin.path=.*\)/\1/" /usr/hdp/current/kafka-broker/conf/connect-distributed.properties
 }
 
 
@@ -118,13 +103,11 @@ StartKafkaConnectInDistributedMode()
 log "Set up kafka connect cluster properties"
 
 # get script parameters
-while getopts "c::g::b::z::h" opt
+while getopts "g::b::h" opt
 do
     case "$opt" in
-        c) CLUSTER_NAME="$OPTARG" ;;
         g) GROUP_ID="$OPTARG" ;;
         b) BOOTSTRAP_SERVERS="$OPTARG" ;;
-        z) ZK_HOSTS="$OPTARG" ;;
         h)
             Help
             exit 0
@@ -132,10 +115,8 @@ do
     esac
 done
 
-log "Cluster Name=$CLUSTER_NAME"
 log "Group ID=$GROUP_ID"
 log "Bootstrap Servers=$BOOTSTRAP_SERVERS"
-log "Zookeeper Hosts=$ZK_HOSTS"
 
 # check script parameters 
 ValidateParameters

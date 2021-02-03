@@ -29,10 +29,8 @@ Help()
     echo ""
     echo "Example Usage: $0 -c clusterName -g groupId -b bootstrapServers -z zkHosts"
     echo -e "\t-h  Prints usage note"
-    echo -e "\t-c  Kafka cluster in which connect cluster details will be stored"
     echo -e "\t-g  Group ID to identify Connect cluster workers"
     echo -e "\t-b  Broker details to establish a connection from connect cluster"
-    echo -e "\t-z  Zookeeper hosts of Kafka cluster" 
     exit 0 # Exit script after printing help
 }
 
@@ -52,60 +50,34 @@ ValidateParameters()
         if [[ -z "${BOOTSTRAP_SERVERS}" ]]; then
             err "Bootstrap servers parameter is required" && exit 1;
         fi
-
-        if [[ -z "${ZK_HOSTS}" ]]; then
-            err "zkHosts is required" && exit 1;
-        fi
 }
 
+#Install JQ to work with json files
 InstallJQ()
 {
     sudo apt install jq -y
 }
 
-UpdateConnectDistributedProperties()
+#Set up Kafka Connect in distributed mode
+SetupConnectCluster()
 {
-    #Replace bootstrap server value
-    sudo sed -i "s/\(bootstrap.servers=\).*/\1${BOOTSTRAP_SERVERS}/" /usr/hdp/current/kafka-broker/conf/connect-distributed.properties
+    sudo wget -q "https://hdidevscripts.blob.core.windows.net/confandscritps/$CONNECT_SETUP_SCRIPT" -O  /tmp/$CONNECT_SETUP_SCRIPT
 
-    #Replace Group.ID value
-    sudo sed -i "s/\(group.id=\).*/\1${GROUP_ID}/" /usr/hdp/current/kafka-broker/conf/connect-distributed.properties
+    if [[ $? -ne 0 ]]; then
+        err "$CONNECT_SETUP_SCRIPT download failed!" && exit $?
+    fi
 
-    #Replace offset storage topic related properties
-    OFFSET_TOPIC_NAME="offset_$GROUP_ID"
-    sudo sed -i "s/\(offset.storage.topic=\).*/\1${OFFSET_TOPIC_NAME}/" /usr/hdp/current/kafka-broker/conf/connect-distributed.properties
-    sudo sed -i "s/\(offset.storage.replication.factor=\).*/\13/" /usr/hdp/current/kafka-broker/conf/connect-distributed.properties
-    sudo sed -i "s/\(offset.storage.partitions=\).*/\14/" /usr/hdp/current/kafka-broker/conf/connect-distributed.properties
-    sudo sed -i "s/^#\(offset.storage.partitions=.*\)/\1/" /usr/hdp/current/kafka-broker/conf/connect-distributed.properties
+    sudo chmod +x /tmp/$CONNECT_SETUP_SCRIPT
 
-    #Replace config  storage topic related properties
-    CONFIG_TOPIC_NAME="config_$GROUP_ID"
-    sudo sed -i "s/\(config.storage.topic=\).*/\1${CONFIG_TOPIC_NAME}/" /usr/hdp/current/kafka-broker/conf/connect-distributed.properties
-    sudo sed -i "s/\(config.storage.replication.factor=\).*/\13/" /usr/hdp/current/kafka-broker/conf/connect-distributed.properties    
+    if [[ $? -ne 0 ]]; then
+        err "Making $CONNECT_SETUP_SCRIPT executable failed" && exit $?
+    fi
 
-    #Replace status  storage topic related properties
-    STATUS_TOPIC_NAME="storage_$GROUP_ID"
-    sudo sed -i "s/\(status.storage.topic=\).*/\1${STATUS_TOPIC_NAME}/" /usr/hdp/current/kafka-broker/conf/connect-distributed.properties
-    sudo sed -i "s/\(status.storage.replication.factor=\).*/\13/" /usr/hdp/current/kafka-broker/conf/connect-distributed.properties
-    sudo sed -i "s/\(status.storage.partitions=\).*/\14/" /usr/hdp/current/kafka-broker/conf/connect-distributed.properties
-    sudo sed -i "s/^#\(status.storage.partitions=.*\)/\1/" /usr/hdp/current/kafka-broker/conf/connect-distributed.properties
+    sudo /tmp/$CONNECT_SETUP_SCRIPT -g $GROUP_ID -b $BOOTSTRAP_SERVERS
 
-    #Set offset flush interval value
-    sudo sed -i "s/\(offset.flush.interval.ms=\).*/\110000/" /usr/hdp/current/kafka-broker/conf/connect-distributed.properties
-
-    #Set rest port value
-    sudo sed -i "s/\(rest.port=\).*/\18083/" /usr/hdp/current/kafka-broker/conf/connect-distributed.properties
-    sudo sed -i "s/^#\(rest.port=.*\).*/\1/" /usr/hdp/current/kafka-broker/conf/connect-distributed.properties
-
-    #Set plugin path
-    sudo sed -i "/^plugin.path=.*/d" /usr/hdp/current/kafka-broker/conf/connect-distributed.properties
-    sudo sed -i "$ a plugin.path=/usr/hdp/current/kafka-broker/plugins/" /usr/hdp/current/kafka-broker/conf/connect-distributed.properties
-}
-
-#Start Kafka connect in distributed mode in the background on the edge node
-StartKafkaConnectInDistributedMode()
-{
-    nohup sudo /usr/hdp/current/kafka-broker/bin/connect-distributed.sh  /usr/hdp/current/kafka-broker/conf/connect-distributed.properties &> /var/log/syslog &
+    if [[ $? -ne 0 ]]; then
+        err "Connect set up failed!" && exit $?
+    fi        
 }
 
 #Create MM2 specific conf files if they are not there
@@ -135,6 +107,7 @@ CreateConfFilesIfDontExist()
     fi
 }
 
+#Update MM2 required configs
 UpdateRequiredconfigs()
 {
     exit_code=0
@@ -188,16 +161,15 @@ StartConnector()
 
 ###  Main  ###
 
-log "Set up kafka connect cluster properties"
+log "Set up kafka MM2 cluster properties"
 
 # get script parameters
-while getopts "g::b::s::z::h" opt
+while getopts "g::b::s::h" opt
 do
     case "$opt" in        
         g) GROUP_ID="$OPTARG" ;;
         b) BOOTSTRAP_SERVERS="$OPTARG" ;;
         s) SOURCE_BOOTSTRAP_SERVERS="$OPTARG" ;;
-        z) ZK_HOSTS="$OPTARG" ;;
         h)
             Help
             exit 0
@@ -208,8 +180,8 @@ done
 log "Group ID=$GROUP_ID"
 log "Bootstrap Servers (Target)=$BOOTSTRAP_SERVERS"
 log "Source bootstrap server=$SOURCE_BOOTSTRAP_SERVERS"
-log "Zookeeper Hosts=$ZK_HOSTS"
 
+CONNECT_SETUP_SCRIPT="SetupConnectCluster.sh"
 MM2_CONF_DIR_PATH="/usr/hdp/current/kafka-broker/conf/mm2"
 MM2_MIRROR_SRC="mm2_source_connector"
 MM2_MIRROR_CPC="mm2_checkpoint_connector"
@@ -220,9 +192,8 @@ ValidateParameters
 # Install JQ
 InstallJQ
 
-# Plain vainall Connector related
-UpdateConnectDistributedProperties
-StartKafkaConnectInDistributedMode
+# Plain vanilla Connector related
+SetupConnectCluster
 
 log "Kafka Connect set up is completed successfully!"
 

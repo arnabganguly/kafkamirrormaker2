@@ -1,0 +1,23 @@
+{
+    "connector.class": "org.apache.kafka.connect.mirror.MirrorCheckpointConnector",
+    "source.cluster.alias": "hdi_kafka_src",
+    "target.cluster.alias": "hdi_kafka_target",
+    "target.cluster.bootstrap.servers": "",
+    "source.cluster.bootstrap.servers": "",
+    "topics": "^[\\w]*",
+    "topics.blacklist": ".*internal, __.*", 
+    "groups.blacklist": "console-consumer-.*, connect-.*, __.*", 
+    "tasks.max": "4",
+    "key.converter": " org.apache.kafka.connect.converters.ByteArrayConverter",
+    "value.converter": "org.apache.kafka.connect.converters.ByteArrayConverter",
+    "replication.factor": "3",
+    "emit.checkpoints.enabled": "true",
+    "emit.heartbeats.enabled": "false",
+    "refresh.topics.enabled": "true",
+    "sync.topic.configs.enabled": "true",
+    "offset-syncs.topic.replication.factor": "3",
+    "sync.topic.acls.interval.seconds": "20",
+    "sync.topic.configs.interval.seconds": "20",
+    "refresh.topics.interval.seconds": "20",
+    "refresh.groups.interval.seconds": "20"
+}

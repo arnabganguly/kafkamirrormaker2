@@ -1,87 +1,84 @@
 {
-    "properties": {
-        "mode": "Incremental",
-        "parameters": {},
-        "template": {
-            "$schema": "http://schema.management.azure.com/schemas/2014-04-01-preview/deploymentTemplate.json#",
-            "contentVersion": "1.0.0.0",
-            "parameters": {
-                "clusterName": {
-                    "type": "string",
-                    "metadata": {
-                        "description": "The name of the exiting Kafka cluster to which edge node will be added"
-                    }
-                },
-                "kafkaMM2Parameters": {
-                    "type": "string",
-                    "metadata": {
-                        "description": "Parameters to set up MM2"
-                    }
-                },
-                "_artifactsLocation": {
-                    "type": "string",
-                    "metadata": {
-                      "description": "The base URI where artifacts required by this template are located."
-                    },
-                    "defaultValue": "https://raw.githubusercontent.com/mohapatrasambit/HDInsightKafkaMirrorMaker2/master/"
-                  },
-                  "_artifactsLocationSasToken": {
-                    "type": "securestring",
-                    "metadata": {
-                        "description": "The sasToken required to access _artifactsLocation.  When the template is deployed using the accompanying scripts, a sasToken will be automatically generated. Use the defaultValue if the staging location is not secured."
-                    },
-                    "defaultValue": ""
-                  },
-                  "installScriptActionFolder": {
-                    "type": "string",
-                    "metadata": {
-                      "description": "A script action you can run on the empty node to install or configure additional software."
-                    },
-                    "defaultValue": "scripts"
-                  },
-                  "installScriptAction": {
-                    "type": "string",
-                    "metadata": {
-                      "description": "A script action you can run on the empty node to install or configure additional software."
-                    },
-                    "defaultValue": "SetupKafkaMirrorMaker2.sh"
-                  }
+    "$schema": "http://schema.management.azure.com/schemas/2014-04-01-preview/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "clusterName": {
+            "type": "string",
+            "metadata": {
+                "description": "The name of the exiting Kafka cluster to which edge node will be added"
+            }
+        },
+        "kafkaMM2Parameters": {
+            "type": "string",
+            "metadata": {
+                "description": "Parameters to set up MM2"
+            }
+        },
+        "_artifactsLocation": {
+            "type": "string",
+            "metadata": {
+                "description": "The base URI where artifacts required by this template are located."
             },
-            "variables": {
-                "applicationName": "[deployment().name]"
+            "defaultValue": "https://raw.githubusercontent.com/mohapatrasambit/HDInsightKafkaMirrorMaker2/master/"
+        },
+        "_artifactsLocationSasToken": {
+            "type": "securestring",
+            "metadata": {
+                "description": "The sasToken required to access _artifactsLocation.  When the template is deployed using the accompanying scripts, a sasToken will be automatically generated. Use the defaultValue if the staging location is not secured."
             },
-            "resources": [
-                {
-                    "name": "[concat(parameters('clusterName'),'/', variables('applicationName'))]",
-                    "type": "Microsoft.HDInsight/clusters/applications",
-                    "apiVersion": "2018-06-01-preview",
-                    "properties": {
-                        "marketPlaceIdentifier": "HDI-Kafka-MM2",
-                        "computeProfile": {
-                            "roles": [
-                                {
-                                    "name": "edgenode",
-                                    "targetInstanceCount": 3,
-                                    "hardwareProfile": {
-                                        "vmSize": "Standard_D3_v2"
-                                    }
-                                }
-                            ]
-                        },
-                        "installScriptActions": [
-                            {
-                                "name": "[concat('emptynode','-' ,uniquestring(variables('applicationName')))]",
-                                "uri": "[concat(parameters('_artifactsLocation'), '/', parameters('installScriptActionFolder'), '/', parameters('installScriptAction'), parameters('_artifactsLocationSasToken'))]",
-                                "parameters": "[parameters('kafkaMM2Parameters')]",
-                                "roles": [
-                                    "edgenode"
-                                ]
-                            }
-                        ],
-                        "applicationType": "CustomApplication"
-                    }
-                }
-            ]
+            "defaultValue": ""
+        },
+        "installScriptActionFolder": {
+            "type": "string",
+            "metadata": {
+                "description": "A script action you can run on the empty node to install or configure additional software."
+            },
+            "defaultValue": "scripts"
+        },
+        "installScriptAction": {
+            "type": "string",
+            "metadata": {
+                "description": "A script action you can run on the empty node to install or configure additional software."
+            },
+            "defaultValue": "SetupKafkaMirrorMaker2.sh"
+        },
+        "applicationName": {
+            "type": "string",
+            "metadata": {
+                "description": "Kafka mirror maker 2 application name"
+            }            
         }
-    }
+    },    
+    "resources": [
+        {
+            "name": "[concat(parameters('clusterName'),'/', parameters('applicationName'))]",
+            "type": "Microsoft.HDInsight/clusters/applications",
+            "apiVersion": "2018-06-01-preview",
+            "properties": {
+                "marketPlaceIdentifier": "HDI-Kafka-MM2",
+                "computeProfile": {
+                    "roles": [
+                        {
+                            "name": "edgenode",
+                            "targetInstanceCount": 3,
+                            "hardwareProfile": {
+                                "vmSize": "Standard_D3_v2"
+                            }
+                        }
+                    ]
+                },
+                "installScriptActions": [
+                    {
+                        "name": "[concat('emptynode','-' ,uniquestring(parameters('applicationName')))]",
+                        "uri": "[concat(parameters('_artifactsLocation'), '/', parameters('installScriptActionFolder'), '/', parameters('installScriptAction'), parameters('_artifactsLocationSasToken'))]",
+                        "parameters": "[parameters('kafkaMM2Parameters')]",
+                        "roles": [
+                            "edgenode"
+                        ]
+                    }
+                ],
+                "applicationType": "CustomApplication"
+            }
+        }
+    ]
 }

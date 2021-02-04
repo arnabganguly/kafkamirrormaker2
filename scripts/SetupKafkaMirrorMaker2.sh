@@ -2,10 +2,9 @@
 
 # Parameters:
 # For basic connect setup
-# 1. kafkaClusterName - Kafka Cluster Name  
 # 1. bootstrapServers - Bootstrap server details for Kafka cluster which will be used by connect
-# 2. zkHosts - Zookeeper server of the Kafka cluster
-# 3. groupId - To identify all connect worker of a connect cluster
+# 2. groupId - To identify all connect worker of a connect cluster
+# 3. SourceBootstrapServer - Bootstrap server details of the source cluster
 # 
 
 trap "CleanUp" 0 1 2 3 13 15 # EXIT HUP INT QUIT PIPE TERM
@@ -31,6 +30,7 @@ Help()
     echo -e "\t-h  Prints usage note"
     echo -e "\t-g  Group ID to identify Connect cluster workers"
     echo -e "\t-b  Broker details to establish a connection from connect cluster"
+    echo -e "\t-s  Bootstrap server details to establish a connection with source cluster"
     exit 0 # Exit script after printing help
 }
 
